@@ -1,0 +1,67 @@
+services:
+  # PostgreSQL with TimescaleDB extension
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: mbo-postgres
+    environment:
+      POSTGRES_USER: mbo_user
+      POSTGRES_PASSWORD: mbo_password_change_me
+      POSTGRES_DB: marketing_budget_optimizer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mbo_user -d marketing_budget_optimizer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for caching and real-time data
+  redis:
+    image: redis:7-alpine
+    container_name: mbo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # RabbitMQ for async task queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: mbo-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: mbo_user
+      RABBITMQ_DEFAULT_PASS: mbo_password_change_me
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+networks:
+  default:
+    name: mbo-network

@@ -1,0 +1,73 @@
+# Pre-commit hooks for Marketing Budget Optimizer
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  # =============================================================================
+  # General
+  # =============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: ^frontend/tsconfig.*\.json$
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # =============================================================================
+  # Python - Backend
+  # =============================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  # Note: MyPy disabled - use CI mypy which reads pyproject.toml correctly
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #     - id: mypy
+  #       files: ^backend/app/
+  #       args: [--ignore-missing-imports]
+  #       additional_dependencies:
+  #         - types-redis
+
+  # =============================================================================
+  # JavaScript/TypeScript - Frontend & MCP Servers
+  # Note: ESLint disabled in pre-commit - use npm run lint in respective dirs
+  # =============================================================================
+  # - repo: https://github.com/pre-commit/mirrors-eslint
+  #   rev: v9.0.0
+  #   hooks:
+  #     - id: eslint
+  #       files: \.(js|jsx|ts|tsx)$
+  #       types: [file]
+  #       args: [--fix]
+  #       additional_dependencies:
+  #         - eslint@9
+  #         - typescript
+  #         - "@typescript-eslint/parser"
+  #         - "@typescript-eslint/eslint-plugin"
+
+  # =============================================================================
+  # Secrets Detection (disabled temporarily - version compatibility issues)
+  # =============================================================================
+  # - repo: https://github.com/Yelp/detect-secrets
+  #   rev: v1.4.0
+  #   hooks:
+  #     - id: detect-secrets
+  #       args: ["--baseline", ".secrets.baseline"]
+  #       exclude: package-lock\.json|\.env\.example
+
+# Configuration
+ci:
+  autofix_commit_msg: "style: auto-fix by pre-commit hooks"
+  autoupdate_commit_msg: "chore: update pre-commit hooks"
