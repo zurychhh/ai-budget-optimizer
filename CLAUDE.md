@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Marketing Budget Optimizer (MBO)** - AI-powered marketing budget management across advertising platforms (Google Ads, Meta, TikTok, LinkedIn) with real-time optimization using Claude Sonnet.
 
-**Status:** ✅ Backend complete, ✅ Frontend complete, ✅ Auth (JWT + RBAC) complete, ✅ MCP Servers (mock mode), ✅ Comprehensive test suite (342 tests)
+**Status:** ✅ Backend, ✅ Frontend, ✅ Auth (JWT + RBAC), ✅ MCP Servers (mock), ✅ Tests (342), ✅ CI/CD Pipeline
+
+**Repository:** https://github.com/zurychhh/ai-budget-optimizer (public)
 
 ## Commands
 
@@ -189,6 +191,29 @@ marketing-budget-optimizer/
 └── scripts/                   # Shell scripts
 ```
 
+## CI/CD Pipeline
+
+**GitHub Actions** runs on every push/PR to `main` and `develop`:
+
+| Job | Description | Time |
+|-----|-------------|------|
+| `backend-lint` | Ruff + MyPy type check | ~30s |
+| `backend-test` | 159 tests + Postgres/Redis services | ~2min |
+| `frontend-lint` | ESLint + TypeScript check | ~30s |
+| `frontend-test` | 100 Vitest tests | ~1min |
+| `frontend-build` | Vite production build | ~30s |
+| `mcp-servers-tested` | Google Ads (48) + Meta Ads (35) tests | ~1min |
+| `mcp-servers-scaffold` | TikTok + LinkedIn typecheck/build | ~30s |
+| `ci-success` | Final gate check | ~5s |
+
+**Branch Protection (main):**
+- Require PR with 1 approval
+- Require `ci-success` status check
+- Require up-to-date branch
+- Block force push and deletions
+
+**Dependabot:** Weekly updates for pip, npm, github-actions
+
 ## Documentation
 
 Detailed docs in `docs/`:
@@ -197,3 +222,12 @@ Detailed docs in `docs/`:
 - `04-autonomous-optimization.md` - Optimization loop logic
 - `05-data-model.md` - Full database schema
 - `07-platform-setup.md` - Platform API credentials guide
+
+## Next Steps (Priority Order)
+
+1. **Dashboard UI** - Build main dashboard with campaign metrics, charts, platform comparison
+2. **Real API Integrations** - Connect MCP servers to actual Google Ads/Meta APIs
+3. **AI Engine Enhancement** - Implement full optimization loop with Claude analysis
+4. **E2E Tests** - Playwright tests for critical user flows
+5. **Docker Production** - Kubernetes/Docker Compose for production deployment
+6. **Monitoring** - Sentry, Prometheus, Grafana dashboards
