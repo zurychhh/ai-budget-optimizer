@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.api.deps import AnalystUser, ManagerUser, ViewerUser
 from app.core.database import get_db
 from app.services.platform_manager import PlatformManager
 
@@ -95,6 +96,7 @@ async def get_campaign_performance(
     ),
     start_date: date = Query(..., description="Start date for metrics (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date for metrics (YYYY-MM-DD)"),
+    current_user: AnalystUser = None,
     db: Session = Depends(get_db),
     manager: PlatformManager = Depends(get_platform_manager),
 ):
@@ -161,6 +163,7 @@ async def get_platform_campaign_performance(
     start_date: date = Query(..., description="Start date for metrics"),
     end_date: date = Query(..., description="End date for metrics"),
     campaign_ids: list[str] | None = Query(default=None, description="Filter by campaign IDs"),
+    current_user: AnalystUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
 ):
     """
@@ -192,6 +195,7 @@ async def update_campaign_budget(
     campaign_id: str,
     platform: str = Query(..., description="Platform of the campaign"),
     budget_update: BudgetUpdate = ...,
+    current_user: ManagerUser = None,
     db: Session = Depends(get_db),
     manager: PlatformManager = Depends(get_platform_manager),
 ):
@@ -234,6 +238,7 @@ async def update_campaign_budget(
 async def pause_campaign(
     campaign_id: str,
     platform: str = Query(..., description="Platform of the campaign"),
+    current_user: ManagerUser = None,
     db: Session = Depends(get_db),
     manager: PlatformManager = Depends(get_platform_manager),
 ):
@@ -265,6 +270,7 @@ async def pause_campaign(
 async def resume_campaign(
     campaign_id: str,
     platform: str = Query(..., description="Platform of the campaign"),
+    current_user: ManagerUser = None,
     db: Session = Depends(get_db),
     manager: PlatformManager = Depends(get_platform_manager),
 ):
@@ -294,6 +300,7 @@ async def resume_campaign(
 
 @router.get("/platforms/health")
 async def check_platform_health(
+    current_user: ViewerUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
 ):
     """Check health status of all MCP servers"""

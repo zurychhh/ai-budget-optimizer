@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     debug: bool = False
     environment: str = "development"
 
+    # Authentication / JWT
+    secret_key: str = "change-me-in-production-use-openssl-rand-hex-32"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
+
     # Database
     database_url: str = (
         "postgresql://mbo_user:mbo_password_change_me@localhost:5432/marketing_budget_optimizer"

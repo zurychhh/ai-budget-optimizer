@@ -9,7 +9,12 @@ import type {
   DashboardMetrics,
   PlatformMetrics,
   Platform,
+  User,
+  TokenResponse,
+  LoginCredentials,
+  RegisterData,
 } from '@/types';
+import { useAuthStore } from '@/store/authStore';
 
 const api = axios.create({
   baseURL: '/api',
@@ -17,6 +22,89 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Request interceptor - add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = useAuthStore.getState().accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor - handle 401 and refresh token
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If 401 and we haven't tried to refresh yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      const refreshToken = useAuthStore.getState().refreshToken;
+      if (refreshToken) {
+        try {
+          // Use a separate axios instance to avoid interceptor loop
+          const refreshResponse = await axios.post<TokenResponse>('/api/auth/refresh', {
+            refresh_token: refreshToken,
+          });
+
+          const { access_token, refresh_token } = refreshResponse.data;
+          useAuthStore.getState().setTokens(access_token, refresh_token);
+
+          // Retry the original request with new token
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          // Refresh failed, logout user
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // No refresh token, logout
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// =============================================================================
+// Auth API
+// =============================================================================
+
+export async function login(credentials: LoginCredentials): Promise<TokenResponse> {
+  const formData = new URLSearchParams();
+  formData.append('username', credentials.username);
+  formData.append('password', credentials.password);
+
+  const response = await api.post<TokenResponse>('/auth/login', formData, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+  return response.data;
+}
+
+export async function register(data: RegisterData): Promise<User> {
+  const response = await api.post<User>('/auth/register', data);
+  return response.data;
+}
+
+export async function refreshToken(refresh_token: string): Promise<TokenResponse> {
+  const response = await api.post<TokenResponse>('/auth/refresh', { refresh_token });
+  return response.data;
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const response = await api.get<User>('/auth/me');
+  return response.data;
+}
 
 // Get dates for last 7 days
 function getDefaultDateRange() {

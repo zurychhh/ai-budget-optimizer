@@ -1,10 +1,12 @@
 """Tests for campaigns API endpoints"""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from app.api.campaigns import get_platform_manager
+from app.api.deps import get_current_user
 from app.main import app
+from app.models.user import User, UserRole
 from fastapi.testclient import TestClient
 
 
@@ -12,9 +14,21 @@ class TestCampaignsAPI:
     """Tests for campaigns API endpoints"""
 
     @pytest.fixture
-    def client(self):
-        """Create test client"""
-        return TestClient(app)
+    def mock_user(self):
+        """Create mock authenticated user"""
+        user = MagicMock(spec=User)
+        user.id = "test-user-id"
+        user.email = "test@example.com"
+        user.role = UserRole.ANALYST.value
+        user.is_active = True
+        return user
+
+    @pytest.fixture
+    def client(self, mock_user):
+        """Create test client with auth override"""
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        yield TestClient(app)
+        app.dependency_overrides.pop(get_current_user, None)
 
     @pytest.fixture
     def mock_platform_manager(self):

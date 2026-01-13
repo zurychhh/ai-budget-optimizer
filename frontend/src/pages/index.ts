@@ -4,3 +4,4 @@ export { BudgetOptimizer } from './BudgetOptimizer';
 export { Analytics } from './Analytics';
 export { Anomalies } from './Anomalies';
 export { Settings } from './Settings';
+export { Login } from './Login';

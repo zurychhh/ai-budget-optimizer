@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Marketing Budget Optimizer (MBO)** - AI-powered marketing budget management across advertising platforms (Google Ads, Meta, TikTok, LinkedIn) with real-time optimization using Claude Sonnet.
 
-**Status:** Infrastructure and backend bootstrapped. Frontend and full MCP server implementations pending.
+**Status:** ✅ Backend complete, ✅ Frontend complete, ✅ Auth (JWT + RBAC) complete, ✅ MCP Servers (mock mode), ✅ Comprehensive test suite (342 tests)
 
 ## Commands
 
@@ -21,21 +21,25 @@ cd backend
 source venv/bin/activate
 alembic upgrade head            # Run migrations
 uvicorn app.main:app --reload --port 8000
-
-# Testing
-cd backend
-pytest                          # All tests
-pytest tests/test_file.py -k test_name  # Single test
+pytest                          # All tests (159 passing)
 pytest --cov=app                # With coverage
 
-# Linting & Type Checking
-cd backend
-ruff check .                    # Lint
-mypy app                        # Type check
+# Frontend (React/TypeScript)
+cd frontend
+npm install
+npm run dev                     # Dev server on :5173
+npm run build                   # Production build
+npm test                        # All tests (100 passing)
+npm test -- --coverage          # With coverage
 
 # MCP Servers (TypeScript)
 cd mcp-servers/google-ads-mcp
 npm install && npm run build && npm start
+npm test                        # Tests (48 passing)
+
+cd mcp-servers/meta-ads-mcp
+npm install && npm run build && npm start
+npm test                        # Tests (35 passing)
 
 # Celery Worker
 cd backend && celery -A app.tasks worker --loglevel=info
@@ -50,11 +54,11 @@ cd backend && celery -A app.tasks worker --loglevel=info
 
 ```
 Frontend (React) → Backend (FastAPI) → MCP Servers (TS) → Ad Platforms
-                        ↓                    ↓
-                   AI Engine            JSON-RPC 2.0
-                   (Claude)
-                        ↓
-               PostgreSQL/TimescaleDB + Redis
+     ↓                   ↓                    ↓
+  Zustand +         AI Engine            JSON-RPC 2.0
+  TanStack Query    (Claude)
+                         ↓
+                PostgreSQL/TimescaleDB + Redis
 ```
 
 ### Key Components
@@ -62,13 +66,32 @@ Frontend (React) → Backend (FastAPI) → MCP Servers (TS) → Ad Platforms
 | Component | Location | Purpose |
 |-----------|----------|---------|
 | `app/main.py` | Backend entry | FastAPI app, routers, CORS |
-| `app/core/config.py` | Settings | Pydantic settings from env |
+| `app/core/security.py` | Auth | JWT tokens, password hashing |
+| `app/api/auth.py` | Auth endpoints | Login, register, refresh, me |
+| `app/api/deps.py` | Dependencies | get_current_user, require_role |
 | `app/services/platform_manager.py` | MCP Client | Unified API to all ad platforms |
-| `app/services/ai_engine.py` | AI | Claude integration, analysis, recommendations |
-| `app/api/ai.py` | AI Endpoints | /api/ai/* routes for analysis, optimization |
-| `app/api/campaigns.py` | Campaign Endpoints | CRUD operations for campaigns |
+| `app/services/ai_engine.py` | AI | Claude integration, analysis |
 | `mcp-servers/shared/` | MCP Shared | Base server class, common types |
-| `mcp-servers/*-mcp/` | MCP Servers | Platform-specific implementations (ports 3001-3004) |
+| `mcp-servers/*-mcp/` | MCP Servers | Platform-specific implementations |
+| `src/store/authStore.ts` | Frontend auth | Zustand auth state, RBAC |
+| `src/api/client.ts` | API client | Axios + interceptors |
+| `src/hooks/useQueries.ts` | Data fetching | React Query hooks |
+| `src/components/ProtectedRoute.tsx` | Route guard | Auth + role protection |
+
+### Authentication & Authorization
+
+JWT-based auth with role hierarchy:
+```
+ADMIN → MANAGER → ANALYST → VIEWER
+  ↓        ↓         ↓         ↓
+ all    budgets   analysis   read-only
+```
+
+Token flow:
+1. Login returns access_token (30min) + refresh_token (7 days)
+2. Axios interceptor adds `Authorization: Bearer {token}`
+3. On 401, auto-refresh and retry request
+4. On refresh failure, redirect to /login
 
 ### Platform Manager Pattern
 
@@ -81,12 +104,12 @@ await manager.update_campaign_budget("meta_ads", campaign_id, new_budget)  # Han
 
 ### MCP Server Ports
 
-| Server | Port |
-|--------|------|
-| google-ads-mcp | 3001 |
-| meta-ads-mcp | 3002 |
-| tiktok-ads-mcp | 3003 |
-| linkedin-ads-mcp | 3004 |
+| Server | Port | Status |
+|--------|------|--------|
+| google-ads-mcp | 3001 | ✅ Mock mode |
+| meta-ads-mcp | 3002 | ✅ Mock mode |
+| tiktok-ads-mcp | 3003 | 🔲 Scaffold only |
+| linkedin-ads-mcp | 3004 | 🔲 Scaffold only |
 
 Each exposes: `get_campaign_performance`, `update_campaign_budget`, `pause_campaign`, `resume_campaign`
 
@@ -96,9 +119,30 @@ Each exposes: `get_campaign_performance`, `update_campaign_budget`, `pause_campa
 - **SEMI_AUTONOMOUS:** AI proposes, human approves
 - **ADVISORY_ONLY:** AI analyzes and suggests only
 
+## Test Suite
+
+| Component | Tests | Status |
+|-----------|-------|--------|
+| Backend (pytest) | 159 | ✅ Passing |
+| Google Ads MCP (vitest) | 48 | ✅ Passing |
+| Meta Ads MCP (vitest) | 35 | ✅ Passing |
+| Frontend (vitest) | 100 | ✅ Passing |
+| **Total** | **342** | ✅ All passing |
+
+### Frontend Test Coverage
+
+| File | Coverage |
+|------|----------|
+| ProtectedRoute.tsx | 100% |
+| useQueries.ts | 100% |
+| Login.tsx | 95% |
+| client.ts | 77.5% |
+| authStore.ts | - (Zustand) |
+
 ## Database
 
 Key tables (see `backend/app/models/` and `docs/05-data-model.md`):
+- `users` - User accounts with roles
 - `campaigns` - Cross-platform campaign data
 - `campaign_metrics` - TimescaleDB hypertable for time-series metrics
 - `ai_recommendations` - AI suggestions with confidence scores
@@ -109,25 +153,41 @@ Migrations: `alembic upgrade head` / `alembic revision --autogenerate -m "messag
 ## Environment Variables
 
 See `.env.example`. Key variables:
+- `SECRET_KEY` - JWT signing key (generate with `openssl rand -hex 32`)
 - `ANTHROPIC_API_KEY` - Required for AI features
 - `DATABASE_URL` - PostgreSQL connection
 - `GOOGLE_ADS_*`, `META_*`, `TIKTOK_*`, `LINKEDIN_*` - Platform credentials
 - `CONFIDENCE_THRESHOLD=0.85`, `MAX_BUDGET_REALLOCATION_PCT=30` - Optimization constraints
 
-## Testing Patterns
+## Project Structure
 
-Tests use `pytest` with `FastAPI.TestClient`:
-```python
-@pytest.fixture
-def client():
-    return TestClient(app)
-
-def test_endpoint(client):
-    response = client.get("/health")
-    assert response.status_code == 200
 ```
-
-Async tests require `pytest-asyncio`.
+marketing-budget-optimizer/
+├── backend/                    # Python FastAPI backend
+│   ├── app/
+│   │   ├── main.py            # Entry point
+│   │   ├── core/              # Config, security, database
+│   │   ├── models/            # SQLAlchemy models (User, Campaign, etc.)
+│   │   ├── services/          # Business logic (ai_engine, platform_manager)
+│   │   ├── api/               # Routes (auth, campaigns, ai)
+│   │   └── tasks/             # Celery async tasks
+│   └── tests/                 # pytest tests (159)
+├── frontend/                   # React TypeScript frontend
+│   ├── src/
+│   │   ├── api/               # Axios client + types
+│   │   ├── components/        # UI components (ProtectedRoute, dashboard, layout)
+│   │   ├── hooks/             # React Query hooks
+│   │   ├── pages/             # Page components (Login, Dashboard, etc.)
+│   │   ├── store/             # Zustand stores (authStore)
+│   │   └── test/              # Test setup + utils
+│   └── package.json
+├── mcp-servers/               # TypeScript MCP servers
+│   ├── shared/                # Base classes, types
+│   ├── google-ads-mcp/        # Port 3001 (48 tests)
+│   └── meta-ads-mcp/          # Port 3002 (35 tests)
+├── docs/                      # Documentation
+└── scripts/                   # Shell scripts
+```
 
 ## Documentation
 

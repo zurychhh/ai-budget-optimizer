@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.campaigns import get_platform_manager
+from app.api.deps import AnalystUser, ManagerUser, ViewerUser
 from app.core.config import settings
 from app.core.database import get_db
 from app.services.ai_engine import (
@@ -132,6 +133,7 @@ router = APIRouter()
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_campaigns(
     request: AnalysisRequest,
+    current_user: AnalystUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
     ai_engine: AIOptimizationEngine = Depends(get_ai_engine_dep),
 ):
@@ -184,6 +186,7 @@ async def analyze_campaigns(
 @router.post("/optimize-budget", response_model=BudgetRecommendationResponse)
 async def optimize_budget(
     request: BudgetOptimizationRequest,
+    current_user: ManagerUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
     ai_engine: AIOptimizationEngine = Depends(get_ai_engine_dep),
 ):
@@ -239,6 +242,7 @@ async def optimize_budget(
 @router.post("/detect-anomalies", response_model=AnomalyResponse)
 async def detect_anomalies(
     request: AnomalyCheckRequest,
+    current_user: AnalystUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
     ai_engine: AIOptimizationEngine = Depends(get_ai_engine_dep),
 ):
@@ -290,6 +294,7 @@ async def detect_anomalies(
 
 @router.post("/action-plan", response_model=ActionPlanResponse)
 async def generate_action_plan(
+    current_user: ManagerUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
     ai_engine: AIOptimizationEngine = Depends(get_ai_engine_dep),
 ):
@@ -346,6 +351,7 @@ async def generate_action_plan(
 @router.post("/query")
 async def natural_language_query(
     request: QueryRequest,
+    current_user: AnalystUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
     ai_engine: AIOptimizationEngine = Depends(get_ai_engine_dep),
 ):
@@ -400,6 +406,7 @@ async def get_recommendations(
     platform: str | None = None,
     min_confidence: float = 0.0,
     limit: int = 20,
+    current_user: AnalystUser = None,
     db: Session = Depends(get_db),
 ):
     """
@@ -427,6 +434,7 @@ async def get_recommendations(
 async def accept_recommendation(
     recommendation_id: str,
     background_tasks: BackgroundTasks,
+    current_user: ManagerUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
     db: Session = Depends(get_db),
 ):
@@ -450,6 +458,7 @@ async def accept_recommendation(
 async def reject_recommendation(
     recommendation_id: str,
     reason: str | None = None,
+    current_user: AnalystUser = None,
     db: Session = Depends(get_db),
 ):
     """
@@ -468,6 +477,7 @@ async def reject_recommendation(
 
 @router.get("/insights")
 async def get_insights(
+    current_user: ViewerUser = None,
     manager: PlatformManager = Depends(get_platform_manager),
     ai_engine: AIOptimizationEngine = Depends(get_ai_engine_dep),
 ):

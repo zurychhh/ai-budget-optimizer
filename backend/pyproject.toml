@@ -69,9 +69,12 @@ ignore_missing_imports = true
 module = [
     "app.services.ai_engine",
     "app.services.platform_manager",
+    "app.services.auth_service",
     "app.api.health",
     "app.api.campaigns",
     "app.api.ai",
+    "app.api.auth",
+    "app.api.deps",
     "app.tasks.monitoring",
 ]
 ignore_errors = true
