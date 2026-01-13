@@ -225,9 +225,9 @@ Detailed docs in `docs/`:
 
 ## Next Steps (Priority Order)
 
-1. **Dashboard UI** - Build main dashboard with campaign metrics, charts, platform comparison
-2. **Real API Integrations** - Connect MCP servers to actual Google Ads/Meta APIs
-3. **AI Engine Enhancement** - Implement full optimization loop with Claude analysis
+1. **Real API Integrations** - Connect MCP servers to actual Google Ads/Meta APIs (replace mock data)
+2. **AI Engine Enhancement** - Full 15-min optimization loop with Claude analysis
+3. **Analytics Page** - Expand placeholder with charts (Recharts/Chart.js)
 4. **E2E Tests** - Playwright tests for critical user flows
-5. **Docker Production** - Kubernetes/Docker Compose for production deployment
-6. **Monitoring** - Sentry, Prometheus, Grafana dashboards
+5. **Docker Production** - Multi-stage builds, Kubernetes manifests
+6. **Monitoring** - Sentry error tracking, Prometheus + Grafana
