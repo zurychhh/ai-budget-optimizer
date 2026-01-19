@@ -46,4 +46,4 @@ httpx==0.26.0  # also used for testing
 mypy==1.8.0
 
 # Linting
-ruff==0.2.1
+ruff==0.14.13
